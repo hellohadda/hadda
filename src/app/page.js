@@ -171,10 +171,6 @@ export default function Home() {
   const [validationMessage, setValidationMessage] = useState('');
   const [validationToken, setValidationToken] = useState(null); // 存储唯一标识和过期时间
   const usedTokensRef = useRef(new Set()); // 存储已使用的标识
-  const [clickedWord, setClickedWord] = useState(null); // 存储点击显示的单词
-  const [clickedWordFading, setClickedWordFading] = useState(false); // 标记单词是否正在淡出
-  const clickWordTimerRef = useRef(null); // 存储定时器引用
-  const formContainerRef = useRef(null); // 表单容器的引用
 
 
   const validateWallet = async (walletAddress) => {
@@ -363,97 +359,6 @@ export default function Home() {
   };
 
 
-  // 处理页面点击事件
-  const handlePageClick = (e) => {
-    // 首先检查是否点击在链接上（包括 Twitter 链接）
-    if (e.target.closest('a')) {
-      return; // 如果点击在链接上，不显示单词，让链接正常工作
-    }
-
-    // 检查是否点击在可交互元素上（按钮等）
-    const interactiveElement = e.target.closest('button') ||
-      e.target.closest('[onClick]') ||
-      e.target.closest('.twitter-link') ||
-      e.target.closest('[role="button"]');
-    if (interactiveElement) {
-      return; // 如果点击在可交互元素上，不显示单词
-    }
-
-    // 检查点击是否在表单框内
-    const formElement = e.target.closest('.form-container') || e.target.closest('form') || e.target.closest('input');
-    if (formElement) {
-      return; // 如果点击在表单区域内，不显示单词
-    }
-
-    // 检查是否点击在导航栏内
-    const navElement = e.target.closest('nav');
-    if (navElement) {
-      // 如果点击在导航栏内的链接上，让链接正常工作
-      if (e.target.closest('a')) {
-        return;
-      }
-      return; // 如果点击在导航栏内，不显示单词
-    }
-
-    // 获取点击位置
-    const x = e.clientX;
-    const y = e.clientY;
-
-    // 获取视口尺寸
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // 转换为百分比
-    const leftPercent = (x / viewportWidth) * 100;
-    const topPercent = (y / viewportHeight) * 100;
-
-    // 通过 DOM 元素精确判断是否在表单框区域内
-    if (formContainerRef.current) {
-      const formRect = formContainerRef.current.getBoundingClientRect();
-      const formLeft = (formRect.left / viewportWidth) * 100;
-      const formRight = (formRect.right / viewportWidth) * 100;
-      const formTop = (formRect.top / viewportHeight) * 100;
-      const formBottom = (formRect.bottom / viewportHeight) * 100;
-
-      // 如果点击在表单框区域内，不显示单词
-      if (leftPercent >= formLeft && leftPercent <= formRight &&
-        topPercent >= formTop && topPercent <= formBottom) {
-        return;
-      }
-    }
-
-    // 清除之前的定时器
-    if (clickWordTimerRef.current) {
-      clearTimeout(clickWordTimerRef.current);
-      clickWordTimerRef.current = null;
-    }
-
-    // 重置淡出状态
-    setClickedWordFading(false);
-
-    // 随机选择一个单词
-    const randomWord = uniqueWords[Math.floor(Math.random() * uniqueWords.length)];
-
-    // 设置新的点击单词
-    setClickedWord({
-      word: randomWord,
-      left: leftPercent,
-      top: topPercent,
-      id: Date.now()
-    });
-
-    // 2.5秒后开始淡出
-    clickWordTimerRef.current = setTimeout(() => {
-      setClickedWordFading(true);
-      // 0.5秒后完全移除（淡出动画完成后）
-      clickWordTimerRef.current = setTimeout(() => {
-        setClickedWord(null);
-        setClickedWordFading(false);
-        clickWordTimerRef.current = null;
-      }, 500);
-    }, 2500);
-  };
-
   // 在客户端生成初始位置，避免 SSR 和客户端不一致
   useEffect(() => {
     // 初始生成位置
@@ -466,23 +371,16 @@ export default function Home() {
       setWordPositions(generateRandomPositions());
     }, 3000); // 每3秒重新开始
 
-    return () => {
-      clearInterval(timer);
-      // 清理点击单词定时器
-      if (clickWordTimerRef.current) {
-        clearTimeout(clickWordTimerRef.current);
-        clickWordTimerRef.current = null;
-      }
-    };
+    return () => clearInterval(timer);
   }, []);
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden" onClick={handlePageClick}>
+    <div className="min-h-screen bg-black relative overflow-hidden">
       {/* 动态渐变背景 */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-orange-950/10 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-orange-950/10"></div>
 
       {/* 动态网格背景 */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
+      <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0" style={{
           backgroundImage: `
             linear-gradient(rgba(251, 146, 60, 0.05) 1px, transparent 1px),
@@ -494,7 +392,7 @@ export default function Home() {
       </div>
 
       {/* 浮动粒子效果 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden">
         {[...Array(30)].map((_, i) => (
           <div
             key={i}
@@ -518,63 +416,19 @@ export default function Home() {
       <div className="absolute top-1/3 left-20 w-24 h-24 border border-orange-400/70 rotate-45 animate-pulse pointer-events-none" style={{ animationDelay: '0.5s' }}></div>
 
       {/* 导航栏 */}
-      <nav
-        className="absolute top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-orange-400/20"
-        onClick={(e) => {
-          // 阻止所有导航栏内的点击事件冒泡到页面点击处理函数
-          e.stopPropagation();
-        }}
-      >
+      <nav className="absolute top-0 left-0 right-0 z-10 bg-black/80 backdrop-blur-sm border-b border-orange-400/20">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="text-orange-400 pixel-font-large">
+            <div className="text-orange-400 pixel-font-large alpha-glow">
               ALPHA
             </div>
-            <button
-              type="button"
-              className="twitter-link text-orange-400 hover:text-orange-300 transition-colors duration-300 cursor-pointer inline-block bg-transparent border-none p-0"
-              title="Visit Twitter"
-              style={{ display: 'inline-block', zIndex: 1000, position: 'relative' }}
-              onClick={(e) => {
-                console.log('Twitter button clicked!'); // 调试信息
-                e.stopPropagation(); // 阻止事件冒泡
-                window.open('https://twitter.com', '_blank', 'noopener,noreferrer');
-              }}
-            >
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-8 h-8"
-                style={{ pointerEvents: 'none' }}
-              >
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-            </button>
           </div>
         </div>
       </nav>
 
-      {/* 点击显示的单词 */}
-      {clickedWord && (
-        <div
-          key={clickedWord.id}
-          className={`absolute z-30 text-orange-400 pixel-font-medium twinkle-word pointer-events-none ${clickedWordFading ? 'animate-fade-out' : 'animate-fade-in'
-            }`}
-          style={{
-            left: `${clickedWord.left}%`,
-            top: `${clickedWord.top}%`,
-            transform: 'translate(-50%, -50%)',
-          }}
-        >
-          {clickedWord.word}
-        </div>
-      )}
-
       {/* 中间的表单框 */}
       <div className="fixed inset-0 flex items-center justify-center z-20 pt-16">
-        <div ref={formContainerRef} className="relative bg-black/90 backdrop-blur-md border-2 border-orange-400/50 rounded-lg p-8 w-full max-w-xl mx-4 shadow-[0_0_30px_rgba(251,146,60,0.4)] form-container">
+        <div className="relative bg-black/90 backdrop-blur-md border-2 border-orange-400/50 rounded-lg p-8 w-full max-w-xl mx-4 shadow-[0_0_30px_rgba(251,146,60,0.4)] form-container">
           {/* 边框光晕动画 */}
           <div className="absolute inset-0 rounded-lg border-2 border-orange-400/30 animate-border-glow pointer-events-none"></div>
 
